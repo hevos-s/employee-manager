@@ -1,6 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
 
-// Dữ liệu mẫu (đồng bộ với Employees.jsx)
 const fakeEmployees = [
   { id: 1, name: 'Nguyễn Văn An', department: 'Kỹ thuật', position: 'Lập trình viên', status: 'Đang làm', email: 'an.nv@hrm.com', phone: '0901234567', joinDate: '01/03/2022' },
   { id: 2, name: 'Trần Thị Bình', department: 'Marketing', position: 'Chuyên viên', status: 'Đang làm', email: 'binh.tt@hrm.com', phone: '0902345678', joinDate: '15/06/2021' },
