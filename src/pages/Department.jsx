@@ -26,7 +26,7 @@ const defaultDepartments = [
     name: "Marketing",
     manager: "Trần Thị Bình",
     count: 5,
-    description: "Chịu trách nhiệm truyền thông và quảng bá thương hiệu..",
+    description: "Chịu trách nhiệm truyền thông và quảng bá thương hiệu.",
     color: "#d63384",
     createdAt: "2024-02-10",
   },
