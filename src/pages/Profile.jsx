@@ -110,11 +110,11 @@ function Profile() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setToast({ type: "danger", msg: "Vui lòng chọn file ảnh" });
+      setToast({ type: "danger", msg: "Vui lòng chọn file ảnh." });
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setToast({ type: "danger", msg: "Ảnh phải nhỏ hơn 2MB" });
+      setToast({ type: "danger", msg: "Ảnh phải nhỏ hơn 2MB." });
       return;
     }
     const reader = new FileReader();
