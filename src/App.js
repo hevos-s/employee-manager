@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { getLocalData } from './utils/storage';
 
 import Layout from './components/Layout';
@@ -18,7 +18,7 @@ function App() {
   const currentUser = getLocalData('currentUser');
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         {/* Trang đăng nhập - không cần bảo vệ */}
         <Route path="/login" element={<Login />} />
@@ -115,7 +115,7 @@ function App() {
         {/* Mọi route không khớp -> về trang chủ */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
