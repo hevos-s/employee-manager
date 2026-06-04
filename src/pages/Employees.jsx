@@ -30,7 +30,7 @@ function Employees() {
       setLoading(false);
     }, 1000);
     
-    return () => clearTimeout(timer); // Dọn dẹp timer
+    return () => clearTimeout(timer); 
   }, []);
 
   const handleDelete = (id) => {
