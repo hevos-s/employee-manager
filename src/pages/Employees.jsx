@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const fakeEmployees = [
@@ -18,20 +18,8 @@ function statusBadge(status) {
 function Employees() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  
 
-  const [employees, setEmployees] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setEmployees(fakeEmployees);
-      setLoading(false);
-    }, 1000);
-    
-    return () => clearTimeout(timer); 
-  }, []);
+  const [employees, setEmployees] = useState(fakeEmployees);
 
   const handleDelete = (id) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa nhân viên này khỏi hệ thống?')) {
@@ -39,7 +27,6 @@ function Employees() {
       setEmployees(newList);
     }
   };
-
 
   const filtered = employees.filter((e) =>
     e.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -62,7 +49,6 @@ function Employees() {
             placeholder="🔍 Tìm kiếm theo tên hoặc phòng ban..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            disabled={loading}
           />
         </div>
       </div>
@@ -70,16 +56,6 @@ function Employees() {
       {/* Bảng nhân viên */}
       <div className="card shadow-sm border-0">
         <div className="card-body p-0">
-          
-          {/* Giao diện Loading */}
-          {loading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Đang tải...</span>
-              </div>
-              <p className="mt-3 text-muted">Đang tải dữ liệu từ máy chủ...</p>
-            </div>
-          ) : (
             <table className="table table-bordered table-striped table-hover mb-0">
               <thead className="table-light">
                 <tr>
@@ -124,8 +100,6 @@ function Employees() {
                 )}
               </tbody>
             </table>
-          )}
-          
         </div>
       </div>
     </div>
