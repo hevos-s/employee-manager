@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const fakeEmployees = [
@@ -18,17 +18,39 @@ function statusBadge(status) {
 function Employees() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  
 
-  const filtered = fakeEmployees.filter((e) =>
+  const [employees, setEmployees] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setEmployees(fakeEmployees);
+      setLoading(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer); // Dọn dẹp timer
+  }, []);
+
+  const handleDelete = (id) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa nhân viên này khỏi hệ thống?')) {
+      const newList = employees.filter((emp) => emp.id !== id);
+      setEmployees(newList);
+    }
+  };
+
+
+  const filtered = employees.filter((e) =>
     e.name.toLowerCase().includes(search.toLowerCase()) ||
     e.department.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div>
-      <h4 className="mb-1">Nhân viên</h4>
-      <p className="text-muted mb-3" style={{ fontSize: '14px' }}>
-        Danh sách toàn bộ nhân viên trong hệ thống.
+      <h4 className="mb-1">Danh sách Nhân viên</h4>
+      <p className="text-muted mb-4" style={{ fontSize: '14px' }}>
+        Quản lý thông tin và trạng thái toàn bộ nhân sự.
       </p>
 
       {/* Tìm kiếm */}
@@ -37,54 +59,73 @@ function Employees() {
           <input
             type="text"
             className="form-control"
-            placeholder="Tìm kiếm theo tên hoặc phòng ban..."
+            placeholder="🔍 Tìm kiếm theo tên hoặc phòng ban..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            disabled={loading}
           />
         </div>
       </div>
 
       {/* Bảng nhân viên */}
-      <div className="card">
+      <div className="card shadow-sm border-0">
         <div className="card-body p-0">
-          <table className="table table-bordered table-striped table-hover mb-0">
-            <thead className="table-light">
-              <tr>
-                <th>STT</th>
-                <th>Họ tên</th>
-                <th>Phòng ban</th>
-                <th>Chức vụ</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((emp, index) => (
-                <tr key={emp.id}>
-                  <td>{index + 1}</td>
-                  <td>{emp.name}</td>
-                  <td>{emp.department}</td>
-                  <td>{emp.position}</td>
-                  <td>{statusBadge(emp.status)}</td>
-                  <td>
-                    <button
-                      className="btn btn-outline-primary btn-sm"
-                      onClick={() => navigate(`/employees/${emp.id}`)}
-                    >
-                      Xem
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
+          
+          {/* Giao diện Loading */}
+          {loading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Đang tải...</span>
+              </div>
+              <p className="mt-3 text-muted">Đang tải dữ liệu từ máy chủ...</p>
+            </div>
+          ) : (
+            <table className="table table-bordered table-striped table-hover mb-0">
+              <thead className="table-light">
                 <tr>
-                  <td colSpan={6} className="text-center text-muted py-3">
-                    Không tìm thấy nhân viên nào.
-                  </td>
+                  <th className="text-center">STT</th>
+                  <th>Họ tên</th>
+                  <th>Phòng ban</th>
+                  <th>Chức vụ</th>
+                  <th className="text-center">Trạng thái</th>
+                  <th className="text-center">Thao tác</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((emp, index) => (
+                  <tr key={emp.id} className="align-middle">
+                    <td className="text-center">{index + 1}</td>
+                    <td className="fw-medium">{emp.name}</td>
+                    <td>{emp.department}</td>
+                    <td>{emp.position}</td>
+                    <td className="text-center">{statusBadge(emp.status)}</td>
+                    <td className="text-center">
+                      <button
+                        className="btn btn-outline-primary btn-sm me-2"
+                        onClick={() => navigate(`/employees/${emp.id}`)}
+                      >
+                        Xem
+                      </button>
+                      <button
+                        className="btn btn-outline-danger btn-sm"
+                        onClick={() => handleDelete(emp.id)}
+                      >
+                        Xóa
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center text-muted py-4">
+                      Không tìm thấy nhân viên nào phù hợp.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+          
         </div>
       </div>
     </div>
