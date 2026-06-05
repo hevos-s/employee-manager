@@ -8,27 +8,16 @@ import {
   Badge,
   ProgressBar,
 } from "react-bootstrap";
-import { getLocalData, setLocalData } from "../utils/storage";
-
-const ACTIVITY_KEY = "userActivities";
-const PWD_KEY = "userPassword";
+import {
+  changePassword,
+  getCurrentUser,
+  updateCurrentUser,
+} from "../services/authService";
 
 function Profile() {
-  const initialUser = getLocalData("currentUser") || {
-    name: "Người dùng",
-    username: "user",
-    role: "employee",
-    email: "",
-    phone: "",
-    department: "",
-    avatar: null,
-    bio: "",
-    joinedAt: new Date().toISOString().slice(0, 10),
-  };
-
-  const [user, setUser] = useState(initialUser);
+  const [user, setUser] = useState(null);
   const [editMode, setEditMode] = useState(false);
-  const [form, setForm] = useState(initialUser);
+  const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [pwdForm, setPwdForm] = useState({
@@ -38,13 +27,26 @@ function Profile() {
   });
   const [pwdErrors, setPwdErrors] = useState({});
   const [toast, setToast] = useState(null);
-  const [activities, setActivities] = useState(
-    () => getLocalData(ACTIVITY_KEY) || [],
-  );
+  const [activities, setActivities] = useState([]);
   const [activeTab, setActiveTab] = useState("info");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const fileInputRef = useRef(null);
 
-  const logActivity = (text, icon = "📝") => {
+  useEffect(() => {
+    const current = getCurrentUser();
+    if (current) {
+      setUser(current);
+      setForm(current);
+      setActivities(current.activities || []);
+      setLoadError("");
+    } else {
+      setLoadError("Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.");
+    }
+    setLoading(false);
+  }, []);
+
+  const logActivity = async (text, icon = "📝") => {
     const entry = {
       id: Date.now(),
       text,
@@ -53,12 +55,10 @@ function Profile() {
     };
     const next = [entry, ...activities].slice(0, 30);
     setActivities(next);
-    setLocalData(ACTIVITY_KEY, next);
+    const updated = await updateCurrentUser({ activities: next });
+    setUser(updated);
+    setForm(updated);
   };
-
-  useEffect(() => {
-    setLocalData("currentUser", user);
-  }, [user]);
 
   useEffect(() => {
     if (!toast) return;
@@ -66,11 +66,12 @@ function Profile() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const firstLetter = (user.name || user.username || "U")
+  const firstLetter = (user?.name || user?.username || "U")
     .charAt(0)
     .toUpperCase();
 
   const completion = useMemo(() => {
+    if (!user) return 0;
     const fields = ["name", "email", "phone", "department", "bio", "avatar"];
     const done = fields.filter((f) => user[f]).length;
     return Math.round((done / fields.length) * 100);
@@ -89,7 +90,7 @@ function Profile() {
 
   const validateProfile = () => {
     const e = {};
-    if (!form.name.trim()) e.name = "Vui lòng nhập họ tên";
+    if (!(form.name || "").trim()) e.name = "Vui lòng nhập họ tên";
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       e.email = "Email không hợp lệ";
     if (form.phone && !/^[0-9+\-\s()]{6,20}$/.test(form.phone))
@@ -98,12 +99,18 @@ function Profile() {
     return Object.keys(e).length === 0;
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     if (!validateProfile()) return;
-    setUser(form);
-    setEditMode(false);
-    logActivity("Đã cập nhật thông tin cá nhân", "✏️");
-    setToast({ type: "success", msg: "Đã lưu thông tin thành công" });
+    try {
+      const updated = await updateCurrentUser(form);
+      setUser(updated);
+      setForm(updated);
+      setEditMode(false);
+      await logActivity("Đã cập nhật thông tin cá nhân", "✏️");
+      setToast({ type: "success", msg: "Đã lưu thông tin thành công" });
+    } catch (err) {
+      setToast({ type: "danger", msg: "Không thể lưu thông tin." });
+    }
   };
 
   const handleAvatarChange = (e) => {
@@ -118,22 +125,30 @@ function Profile() {
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const updated = { ...user, avatar: ev.target.result };
-      setUser(updated);
-      setForm((prev) => ({ ...prev, avatar: ev.target.result }));
-      logActivity("Đã cập nhật ảnh đại diện", "🖼️");
-      setToast({ type: "success", msg: "Đã cập nhật ảnh đại diện" });
+    reader.onload = async (ev) => {
+      try {
+        const updated = await updateCurrentUser({ avatar: ev.target.result });
+        setUser(updated);
+        setForm(updated);
+        await logActivity("Đã cập nhật ảnh đại diện", "🖼️");
+        setToast({ type: "success", msg: "Đã cập nhật ảnh đại diện" });
+      } catch (err) {
+        setToast({ type: "danger", msg: "Không thể cập nhật ảnh đại diện." });
+      }
     };
     reader.readAsDataURL(file);
   };
 
-  const removeAvatar = () => {
-    const updated = { ...user, avatar: null };
-    setUser(updated);
-    setForm((prev) => ({ ...prev, avatar: null }));
-    logActivity("Đã xóa ảnh đại diện", "🗑️");
-    setToast({ type: "info", msg: "Đã xóa ảnh đại diện" });
+  const removeAvatar = async () => {
+    try {
+      const updated = await updateCurrentUser({ avatar: null });
+      setUser(updated);
+      setForm(updated);
+      await logActivity("Đã xóa ảnh đại diện", "🗑️");
+      setToast({ type: "info", msg: "Đã xóa ảnh đại diện" });
+    } catch (err) {
+      setToast({ type: "danger", msg: "Không thể xóa ảnh đại diện." });
+    }
   };
 
   const openPwdModal = () => {
@@ -142,21 +157,24 @@ function Profile() {
     setShowPwdModal(true);
   };
 
-  const savePassword = () => {
+  const savePassword = async () => {
     const e = {};
-    const stored = getLocalData(PWD_KEY);
-    if (stored && pwdForm.current !== stored)
-      e.current = "Mật khẩu hiện tại không đúng";
     if (!pwdForm.next || pwdForm.next.length < 6)
       e.next = "Mật khẩu mới phải ≥ 6 ký tự";
     if (pwdForm.next !== pwdForm.confirm)
       e.confirm = "Mật khẩu xác nhận không khớp";
     setPwdErrors(e);
     if (Object.keys(e).length) return;
-    setLocalData(PWD_KEY, pwdForm.next);
-    setShowPwdModal(false);
-    logActivity("Đã đổi mật khẩu", "🔐");
-    setToast({ type: "success", msg: "Đã đổi mật khẩu thành công" });
+    try {
+      const updated = await changePassword(pwdForm.current, pwdForm.next);
+      setUser(updated);
+      setForm(updated);
+      setShowPwdModal(false);
+      await logActivity("Đã đổi mật khẩu", "🔐");
+      setToast({ type: "success", msg: "Đã đổi mật khẩu thành công" });
+    } catch (err) {
+      setPwdErrors({ current: err.message || "Không thể đổi mật khẩu" });
+    }
   };
 
   const pwdStrength = useMemo(() => {
@@ -184,11 +202,17 @@ function Profile() {
     };
   }, [pwdForm.next]);
 
-  const clearActivities = () => {
+  const clearActivities = async () => {
     if (window.confirm("Xóa toàn bộ lịch sử hoạt động?")) {
-      setActivities([]);
-      setLocalData(ACTIVITY_KEY, []);
-      setToast({ type: "info", msg: "Đã xóa lịch sử hoạt động" });
+      try {
+        const updated = await updateCurrentUser({ activities: [] });
+        setUser(updated);
+        setForm(updated);
+        setActivities([]);
+        setToast({ type: "info", msg: "Đã xóa lịch sử hoạt động" });
+      } catch (err) {
+        setToast({ type: "danger", msg: "Không thể xóa lịch sử hoạt động." });
+      }
     }
   };
 
@@ -201,6 +225,14 @@ function Profile() {
     if (diff < 86400 * 7) return `${Math.floor(diff / 86400)} ngày trước`;
     return d.toLocaleDateString("vi-VN");
   };
+
+  if (loading) {
+    return <div className="text-center text-muted py-5">Đang tải hồ sơ...</div>;
+  }
+
+  if (loadError || !user) {
+    return <div className="alert alert-danger">{loadError || "Không thể tải hồ sơ."}</div>;
+  }
 
   return (
     <div>

@@ -1,11 +1,5 @@
-import { useState } from 'react';
-
-const initialLeaves = [
-  { id: 1, name: 'Nguyễn Văn An', type: 'Nghỉ phép năm', from: '20/05/2026', to: '22/05/2026', days: 3, reason: 'Việc gia đình', status: 'Đã duyệt' },
-  { id: 2, name: 'Trần Thị Bình', type: 'Nghỉ bệnh', from: '21/05/2026', to: '21/05/2026', days: 1, reason: 'Khám bệnh', status: 'Chờ duyệt' },
-  { id: 3, name: 'Hoàng Văn Em', type: 'Nghỉ không lương', from: '25/05/2026', to: '27/05/2026', days: 3, reason: 'Du lịch cá nhân', status: 'Từ chối' },
-  { id: 4, name: 'Phạm Thị Dung', type: 'Nghỉ phép năm', from: '01/06/2026', to: '03/06/2026', days: 3, reason: 'Nghỉ hè', status: 'Chờ duyệt' },
-];
+import { useEffect, useState } from 'react';
+import { getLeaveRequests, updateLeaveRequest } from '../services/leaveService';
 
 function statusBadge(status) {
   if (status === 'Đã duyệt') return <span className="badge bg-success">{status}</span>;
@@ -15,22 +9,39 @@ function statusBadge(status) {
 }
 
 function LeaveRequests() {
-  const [leaves, setLeaves] = useState(initialLeaves);
+  const [leaves, setLeaves] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const handleApprove = (id) => {
-    setLeaves(prevLeaves => 
-      prevLeaves.map(leave => 
-        leave.id === id ? { ...leave, status: 'Đã duyệt' } : leave
-      )
-    );
-  };
+  useEffect(() => {
+    async function loadLeaves() {
+      try {
+        setLoading(true);
+        setError('');
+        const data = await getLeaveRequests();
+        setLeaves(data);
+      } catch (err) {
+        setError('Không thể tải danh sách nghỉ phép. Vui lòng kiểm tra json-server.');
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const handleReject = (id) => {
-    setLeaves(prevLeaves => 
-      prevLeaves.map(leave => 
-        leave.id === id ? { ...leave, status: 'Từ chối' } : leave
-      )
-    );
+    loadLeaves();
+  }, []);
+
+  const updateStatus = async (id, status) => {
+    const current = leaves.find((leave) => leave.id === id);
+    if (!current) return;
+
+    try {
+      const updated = await updateLeaveRequest(id, { ...current, status });
+      setLeaves((prevLeaves) =>
+        prevLeaves.map((leave) => (leave.id === id ? updated : leave))
+      );
+    } catch (err) {
+      setError('Không thể cập nhật trạng thái đơn nghỉ phép.');
+    }
   };
 
   return (
@@ -39,6 +50,8 @@ function LeaveRequests() {
       <p className="text-muted mb-3" style={{ fontSize: '14px' }}>
         Danh sách các đơn xin nghỉ phép của nhân viên.
       </p>
+
+      {error && <div className="alert alert-danger py-2">{error}</div>}
 
       <div className="card">
         <div className="card-body p-0">
@@ -57,38 +70,52 @@ function LeaveRequests() {
               </tr>
             </thead>
             <tbody>
-              {leaves.map((leave, index) => (
-                <tr key={leave.id}>
-                  <td>{index + 1}</td>
-                  <td>{leave.name}</td>
-                  <td>{leave.type}</td>
-                  <td>{leave.from}</td>
-                  <td>{leave.to}</td>
-                  <td>{leave.days}</td>
-                  <td>{leave.reason}</td>
-                  <td>{statusBadge(leave.status)}</td>
-                  <td className="text-center">
-                    {leave.status === 'Chờ duyệt' ? (
-                      <div className="d-flex justify-content-center gap-2">
-                        <button 
-                          className="btn btn-sm btn-success" 
-                          onClick={() => handleApprove(leave.id)}
-                        >
-                          Đồng ý
-                        </button>
-                        <button 
-                          className="btn btn-sm btn-outline-danger" 
-                          onClick={() => handleReject(leave.id)}
-                        >
-                          Từ chối
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-muted">-</span>
-                    )}
+              {loading ? (
+                <tr>
+                  <td colSpan="9" className="text-center py-4 text-muted">
+                    Đang tải dữ liệu...
                   </td>
                 </tr>
-              ))}
+              ) : leaves.length > 0 ? (
+                leaves.map((leave, index) => (
+                  <tr key={leave.id}>
+                    <td>{index + 1}</td>
+                    <td>{leave.name}</td>
+                    <td>{leave.type}</td>
+                    <td>{leave.from}</td>
+                    <td>{leave.to}</td>
+                    <td>{leave.days}</td>
+                    <td>{leave.reason}</td>
+                    <td>{statusBadge(leave.status)}</td>
+                    <td className="text-center">
+                      {leave.status === 'Chờ duyệt' ? (
+                        <div className="d-flex justify-content-center gap-2">
+                          <button
+                            className="btn btn-sm btn-success"
+                            onClick={() => updateStatus(leave.id, 'Đã duyệt')}
+                          >
+                            Đồng ý
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => updateStatus(leave.id, 'Từ chối')}
+                          >
+                            Từ chối
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-muted">-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="9" className="text-center py-4 text-muted">
+                    Chưa có đơn xin nghỉ phép.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

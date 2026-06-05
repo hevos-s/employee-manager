@@ -7,57 +7,12 @@ import {
   Badge,
   Dropdown,
 } from "react-bootstrap";
-import { getLocalData, setLocalData } from "../utils/storage";
-
-const STORAGE_KEY = "departments";
-
-const defaultDepartments = [
-  {
-    id: 1,
-    name: "Kỹ thuật",
-    manager: "Nguyễn Văn An",
-    count: 8,
-    description: "Phụ trách phát triển phần mềm và hạ tầng kỹ thuật.",
-    color: "#0d6efd",
-    createdAt: "2024-01-15",
-  },
-  {
-    id: 2,
-    name: "Marketing",
-    manager: "Trần Thị Bình",
-    count: 5,
-    description: "Chịu trách nhiệm truyền thông và quảng bá thương hiệu.",
-    color: "#d63384",
-    createdAt: "2024-02-10",
-  },
-  {
-    id: 3,
-    name: "Kế toán",
-    manager: "Lê Văn Cường",
-    count: 4,
-    description: "Quản lý tài chính và báo cáo kế toán.",
-    color: "#198754",
-    createdAt: "2024-01-20",
-  },
-  {
-    id: 4,
-    name: "Nhân sự",
-    manager: "Phạm Thị Dung",
-    count: 3,
-    description: "Tuyển dụng, đào tạo và quản lý nhân viên.",
-    color: "#fd7e14",
-    createdAt: "2024-03-05",
-  },
-  {
-    id: 5,
-    name: "Hành chính",
-    manager: "Hoàng Văn Em",
-    count: 4,
-    description: "Hỗ trợ hành chính và quản lý văn phòng.",
-    color: "#6f42c1",
-    createdAt: "2024-02-25",
-  },
-];
+import {
+  createDepartment,
+  deleteDepartment,
+  getDepartments,
+  updateDepartment,
+} from "../services/departmentService";
 
 const emptyForm = {
   id: null,
@@ -69,9 +24,7 @@ const emptyForm = {
 };
 
 function Departments() {
-  const [departments, setDepartments] = useState(
-    () => getLocalData(STORAGE_KEY) || defaultDepartments,
-  );
+  const [departments, setDepartments] = useState([]);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("name-asc");
   const [viewMode, setViewMode] = useState("grid"); // grid | list
@@ -81,10 +34,25 @@ function Departments() {
   const [errors, setErrors] = useState({});
   const [deleteId, setDeleteId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    setLocalData(STORAGE_KEY, departments);
-  }, [departments]);
+    loadDepartments();
+  }, []);
+
+  const loadDepartments = async () => {
+    try {
+      setLoading(true);
+      setLoadError("");
+      const data = await getDepartments();
+      setDepartments(data);
+    } catch (err) {
+      setLoadError("Không thể tải danh sách phòng ban. Vui lòng kiểm tra json-server.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -155,34 +123,46 @@ function Departments() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
-    if (form.id) {
-      setDepartments((prev) =>
-        prev.map((d) =>
-          d.id === form.id ? { ...form, count: Number(form.count) } : d,
-        ),
-      );
-      setToast({ type: "success", msg: `Đã cập nhật "${form.name}"` });
-    } else {
-      const newDept = {
-        ...form,
-        id: Date.now(),
-        count: Number(form.count) || 0,
-        createdAt: new Date().toISOString().slice(0, 10),
-      };
-      setDepartments((prev) => [...prev, newDept]);
-      setToast({ type: "success", msg: `Đã thêm "${form.name}"` });
+    try {
+      if (form.id) {
+        const updated = await updateDepartment(form.id, {
+          ...form,
+          count: Number(form.count),
+        });
+        setDepartments((prev) =>
+          prev.map((d) => (d.id === form.id ? updated : d)),
+        );
+        setToast({ type: "success", msg: `Đã cập nhật "${form.name}"` });
+      } else {
+        const newDept = {
+          ...form,
+          count: Number(form.count) || 0,
+          createdAt: new Date().toISOString().slice(0, 10),
+        };
+        delete newDept.id;
+        const created = await createDepartment(newDept);
+        setDepartments((prev) => [...prev, created]);
+        setToast({ type: "success", msg: `Đã thêm "${form.name}"` });
+      }
+      setShowModal(false);
+    } catch (err) {
+      setLoadError("Không thể lưu phòng ban. Vui lòng thử lại.");
     }
-    setShowModal(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const dept = departments.find((d) => d.id === deleteId);
-    setDepartments((prev) => prev.filter((d) => d.id !== deleteId));
-    setShowDeleteModal(false);
-    setDeleteId(null);
-    if (dept) setToast({ type: "danger", msg: `Đã xóa "${dept.name}"` });
+    try {
+      await deleteDepartment(deleteId);
+      setDepartments((prev) => prev.filter((d) => d.id !== deleteId));
+      setShowDeleteModal(false);
+      setDeleteId(null);
+      if (dept) setToast({ type: "danger", msg: `Đã xóa "${dept.name}"` });
+    } catch (err) {
+      setLoadError("Không thể xóa phòng ban. Vui lòng thử lại.");
+    }
   };
 
   const handleExportCSV = () => {
@@ -220,10 +200,8 @@ function Departments() {
   };
 
   const handleReset = () => {
-    if (window.confirm("Khôi phục về dữ liệu mặc định? Mọi thay đổi sẽ mất.")) {
-      setDepartments(defaultDepartments);
-      setToast({ type: "warning", msg: "Đã khôi phục dữ liệu mặc định" });
-    }
+    loadDepartments();
+    setToast({ type: "info", msg: "Đã tải lại dữ liệu từ server" });
   };
 
   return (
@@ -262,6 +240,12 @@ function Departments() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="alert alert-danger py-2" style={{ fontSize: "14px" }}>
+          {loadError}
+        </div>
+      )}
 
       <div className="row g-3 mb-3">
         <div className="col-md-3 col-6">
@@ -376,7 +360,13 @@ function Departments() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="card border-0 shadow-sm">
+          <div className="card-body text-center py-5 text-muted">
+            Đang tải dữ liệu...
+          </div>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="card border-0 shadow-sm">
           <div className="card-body text-center py-5">
             <p className="text-muted mb-2" style={{ fontSize: "15px" }}>

@@ -1,26 +1,40 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-
-
-const fakeEmployees = [
-  { id: 1, name: 'Nguyễn Văn An', department: 'Kỹ thuật', position: 'Lập trình viên', status: 'Đang làm', email: 'an.nv@hrm.com', phone: '0901234567', joinDate: '01/03/2022' },
-  { id: 2, name: 'Trần Thị Bình', department: 'Marketing', position: 'Chuyên viên', status: 'Đang làm', email: 'binh.tt@hrm.com', phone: '0902345678', joinDate: '15/06/2021' },
-  { id: 3, name: 'Lê Văn Cường', department: 'Kế toán', position: 'Kế toán viên', status: 'Nghỉ phép', email: 'cuong.lv@hrm.com', phone: '0903456789', joinDate: '10/01/2020' },
-  { id: 4, name: 'Phạm Thị Dung', department: 'Nhân sự', position: 'Chuyên viên HR', status: 'Đang làm', email: 'dung.pt@hrm.com', phone: '0904567890', joinDate: '20/09/2023' },
-  { id: 5, name: 'Hoàng Văn Em', department: 'Kỹ thuật', position: 'Kỹ sư', status: 'Đang làm', email: 'em.hv@hrm.com', phone: '0905678901', joinDate: '05/04/2022' },
-];
+import { getEmployeeById } from '../services/employeeService';
 
 function EmployeeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [employee, setEmployee] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
+  useEffect(() => {
+    async function loadEmployee() {
+      try {
+        setLoading(true);
+        setError('');
+        const data = await getEmployeeById(id);
+        setEmployee(data);
+      } catch (err) {
+        setError('Không tìm thấy hồ sơ hoặc không thể kết nối json-server.');
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const employee = fakeEmployees.find((e) => e.id === parseInt(id));
+    loadEmployee();
+  }, [id]);
 
-  if (!employee) {
+  if (loading) {
+    return <div className="text-center text-muted py-5">Đang tải hồ sơ nhân viên...</div>;
+  }
+
+  if (error || !employee) {
     return (
       <div className="text-center py-5">
         <h5 className="text-danger">Lỗi: Không tìm thấy hồ sơ!</h5>
-        <p className="text-muted">Nhân viên này không tồn tại hoặc đã bị xóa.</p>
+        <p className="text-muted">{error || 'Nhân viên này không tồn tại hoặc đã bị xóa.'}</p>
         <button className="btn btn-primary mt-3" onClick={() => navigate('/employees')}>
           ← Quay lại danh sách
         </button>
@@ -52,7 +66,7 @@ function EmployeeDetail() {
       <div className="card shadow-sm border-0" style={{ maxWidth: '600px' }}>
         <div className="card-header bg-white border-bottom-0 pt-4 pb-0">
           <div className="d-flex align-items-center">
-            <div 
+            <div
               className="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-3"
               style={{ width: '60px', height: '60px', fontSize: '24px', fontWeight: 'bold' }}
             >
@@ -64,7 +78,7 @@ function EmployeeDetail() {
             </div>
           </div>
         </div>
-        
+
         <div className="card-body mt-3">
           <table className="table table-borderless mb-0">
             <tbody>

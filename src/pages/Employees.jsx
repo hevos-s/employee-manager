@@ -1,13 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const fakeEmployees = [
-  { id: 1, name: 'Nguyễn Văn An', department: 'Kỹ thuật', position: 'Lập trình viên', status: 'Đang làm' },
-  { id: 2, name: 'Trần Thị Bình', department: 'Marketing', position: 'Chuyên viên', status: 'Đang làm' },
-  { id: 3, name: 'Lê Văn Cường', department: 'Kế toán', position: 'Kế toán viên', status: 'Nghỉ phép' },
-  { id: 4, name: 'Phạm Thị Dung', department: 'Nhân sự', position: 'Chuyên viên HR', status: 'Đang làm' },
-  { id: 5, name: 'Hoàng Văn Em', department: 'Kỹ thuật', position: 'Kỹ sư', status: 'Đang làm' },
-];
+import { deleteEmployee, getEmployees } from '../services/employeeService';
 
 function statusBadge(status) {
   if (status === 'Đang làm') return <span className="badge bg-success">{status}</span>;
@@ -18,19 +11,45 @@ function statusBadge(status) {
 function Employees() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const [employees, setEmployees] = useState(fakeEmployees);
+  useEffect(() => {
+    async function loadEmployees() {
+      try {
+        setLoading(true);
+        setError('');
+        const data = await getEmployees();
+        setEmployees(data);
+      } catch (err) {
+        setError('Không thể tải danh sách nhân viên. Vui lòng kiểm tra json-server.');
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  const handleDelete = (id) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa nhân viên này khỏi hệ thống?')) {
-      const newList = employees.filter((emp) => emp.id !== id);
-      setEmployees(newList);
+    loadEmployees();
+  }, []);
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa nhân viên này khỏi hệ thống?')) return;
+
+    try {
+      await deleteEmployee(id);
+      setEmployees((prev) => prev.filter((emp) => emp.id !== id));
+    } catch (err) {
+      setError('Không thể xóa nhân viên. Vui lòng thử lại.');
     }
   };
 
-  const filtered = employees.filter((e) =>
-    e.name.toLowerCase().includes(search.toLowerCase()) ||
-    e.department.toLowerCase().includes(search.toLowerCase())
+  const filtered = useMemo(
+    () =>
+      employees.filter((e) =>
+        e.name.toLowerCase().includes(search.toLowerCase()) ||
+        e.department.toLowerCase().includes(search.toLowerCase())
+      ),
+    [employees, search]
   );
 
   return (
@@ -40,7 +59,8 @@ function Employees() {
         Quản lý thông tin và trạng thái toàn bộ nhân sự.
       </p>
 
-      {/* Tìm kiếm */}
+      {error && <div className="alert alert-danger py-2">{error}</div>}
+
       <div className="row mb-3">
         <div className="col-md-4">
           <input
@@ -53,22 +73,28 @@ function Employees() {
         </div>
       </div>
 
-      {/* Bảng nhân viên */}
       <div className="card shadow-sm border-0">
         <div className="card-body p-0">
-            <table className="table table-bordered table-striped table-hover mb-0">
-              <thead className="table-light">
+          <table className="table table-bordered table-striped table-hover mb-0">
+            <thead className="table-light">
+              <tr>
+                <th className="text-center">STT</th>
+                <th>Họ tên</th>
+                <th>Phòng ban</th>
+                <th>Chức vụ</th>
+                <th className="text-center">Trạng thái</th>
+                <th className="text-center">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
                 <tr>
-                  <th className="text-center">STT</th>
-                  <th>Họ tên</th>
-                  <th>Phòng ban</th>
-                  <th>Chức vụ</th>
-                  <th className="text-center">Trạng thái</th>
-                  <th className="text-center">Thao tác</th>
+                  <td colSpan={6} className="text-center text-muted py-4">
+                    Đang tải dữ liệu...
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map((emp, index) => (
+              ) : filtered.length > 0 ? (
+                filtered.map((emp, index) => (
                   <tr key={emp.id} className="align-middle">
                     <td className="text-center">{index + 1}</td>
                     <td className="fw-medium">{emp.name}</td>
@@ -90,16 +116,16 @@ function Employees() {
                       </button>
                     </td>
                   </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="text-center text-muted py-4">
-                      Không tìm thấy nhân viên nào phù hợp.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="text-center text-muted py-4">
+                    Không tìm thấy nhân viên nào phù hợp.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

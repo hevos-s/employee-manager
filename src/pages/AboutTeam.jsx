@@ -5,7 +5,7 @@ const members = [
     studentId: 'B23DVCN051',
     tasks: [
       'Xây dựng khung hệ thống, cấu hình route và layout chung.',
-      'Phụ trách Header, Sidebar, ProtectedRoute và xử lý localStorage dùng chung.',
+      'Phụ trách Header, Sidebar, ProtectedRoute và xử lý API service dùng chung.',
       'Tạo thêm trang Giới thiệu nhóm và tổng hợp source code.',
     ],
   },
@@ -57,7 +57,7 @@ const assignments = [
     name: 'Lê Trọng Hiếu',
     studentId: 'B23DVCN051',
     files: ['App.js', 'index.js', 'Layout.jsx', 'Header.jsx', 'Sidebar.jsx', 'ProtectedRoute.jsx', 'storage.js', 'AboutTeam.jsx'],
-    content: 'Xây dựng khung hệ thống, điều hướng, layout chung, bảo vệ route, xử lý localStorage và trang giới thiệu nhóm.',
+    content: 'Xây dựng khung hệ thống, điều hướng, layout chung, bảo vệ route, xử lý API service và trang giới thiệu nhóm.',
   },
   {
     id: 2,
@@ -106,7 +106,7 @@ function AboutTeam() {
               {[
                 { label: 'Tên project', value: 'HRM System' },
                 { label: 'Chủ đề', value: 'Website quản lý nhân sự công ty' },
-                { label: 'Công nghệ sử dụng', value: 'ReactJS, JavaScript, localStorage' },
+                { label: 'Công nghệ sử dụng', value: 'ReactJS, JavaScript, json-server' },
                 { label: 'Hình thức dữ liệu', value: 'Dữ liệu giả lập lưu trên trình duyệt' },
               ].map((row) => (
                 <tr key={row.label}>

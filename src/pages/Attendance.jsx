@@ -1,24 +1,5 @@
-import { useState } from 'react';
-
-const fakeAttendance = [
-  // --- Dữ liệu ngày 22/05/2026 ---
-  { id: 1, name: 'Phạm Thị Dung', date: '2026-05-22', checkIn: '07:55', checkOut: '17:05', status: 'Đúng giờ' },
-  { id: 2, name: 'Nguyễn Văn An', date: '2026-05-22', checkIn: '08:02', checkOut: '17:10', status: 'Đúng giờ' },
-  { id: 3, name: 'Lê Văn Cường', date: '2026-05-22', checkIn: '--', checkOut: '--', status: 'Nghỉ phép' },
-  { id: 4, name: 'Trần Thị Bình', date: '2026-05-22', checkIn: '08:45', checkOut: '17:00', status: 'Đi muộn' },
-  
-  // --- Dữ liệu ngày 21/05/2026 ---
-  { id: 5, name: 'Phạm Thị Dung', date: '2026-05-21', checkIn: '--', checkOut: '--', status: 'Nghỉ phép' },
-  { id: 6, name: 'Nguyễn Văn An', date: '2026-05-21', checkIn: '08:00', checkOut: '17:00', status: 'Đúng giờ' },
-  { id: 7, name: 'Lê Văn Cường', date: '2026-05-21', checkIn: '09:10', checkOut: '17:30', status: 'Đi muộn' },
-  { id: 8, name: 'Trần Thị Bình', date: '2026-05-21', checkIn: '07:50', checkOut: '17:15', status: 'Đúng giờ' },
-
-  // --- Dữ liệu ngày 20/05/2026 ---
-  { id: 9, name: 'Phạm Thị Dung', date: '2026-05-20', checkIn: '08:05', checkOut: '17:02', status: 'Đúng giờ' },
-  { id: 10, name: 'Nguyễn Văn An', date: '2026-05-20', checkIn: '08:30', checkOut: '17:00', status: 'Đi muộn' },
-  { id: 11, name: 'Lê Văn Cường', date: '2026-05-20', checkIn: '07:45', checkOut: '17:00', status: 'Đúng giờ' },
-  { id: 12, name: 'Trần Thị Bình', date: '2026-05-20', checkIn: '--', checkOut: '--', status: 'Nghỉ phép' },
-];
+import { useEffect, useState } from 'react';
+import { getAttendance } from '../services/attendanceService';
 
 function statusBadge(status) {
   if (status === 'Đúng giờ') return <span className="badge bg-success">{status}</span>;
@@ -35,8 +16,26 @@ function formatDateForDisplay(dateString) {
 
 function Attendance() {
   const [selectedDate, setSelectedDate] = useState('2026-05-22');
+  const [attendance, setAttendance] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const filteredAttendance = fakeAttendance.filter(row => row.date === selectedDate);
+  useEffect(() => {
+    async function loadAttendance() {
+      try {
+        setLoading(true);
+        setError('');
+        const data = await getAttendance({ date: selectedDate });
+        setAttendance(data);
+      } catch (err) {
+        setError('Không thể tải dữ liệu chấm công. Vui lòng kiểm tra json-server.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadAttendance();
+  }, [selectedDate]);
 
   return (
     <div>
@@ -45,13 +44,15 @@ function Attendance() {
         Theo dõi thời gian ra vào của nhân viên.
       </p>
 
+      {error && <div className="alert alert-danger py-2">{error}</div>}
+
       <div className="row mb-3">
         <div className="col-md-3">
           <div className="d-flex align-items-center gap-2">
             <label className="form-label mb-0 text-nowrap">Ngày:</label>
-            <input 
+            <input
               type="date"
-              className="form-control" 
+              className="form-control"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
             />
@@ -73,8 +74,14 @@ function Attendance() {
               </tr>
             </thead>
             <tbody>
-              {filteredAttendance.length > 0 ? (
-                filteredAttendance.map((row, index) => (
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-4 text-muted">
+                    Đang tải dữ liệu...
+                  </td>
+                </tr>
+              ) : attendance.length > 0 ? (
+                attendance.map((row, index) => (
                   <tr key={row.id}>
                     <td>{index + 1}</td>
                     <td>{row.name}</td>

@@ -1,29 +1,31 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { setLocalData } from '../utils/storage';
+import { login } from '../services/authService';
 
 function Login() {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Tài khoản mẫu để test
-  const fakeAccounts = [
-    { username: 'admin', password: '123456', name: 'Admin', role: 'admin' },
-    { username: 'nhanvien', password: '123456', name: 'Trần Thị Nhân Viên', role: 'employee' },
-  ];
-
-  function handleLogin(e) {
+  async function handleLogin(e) {
     e.preventDefault();
-    const found = fakeAccounts.find(
-      (acc) => acc.username === username && acc.password === password
-    );
-    if (found) {
-      setLocalData('currentUser', found);
-      navigate('/dashboard');
-    } else {
-      setError('Tên đăng nhập hoặc mật khẩu không đúng.');
+
+    try {
+      setLoading(true);
+      setError('');
+      const found = await login(username, password);
+
+      if (found) {
+        navigate('/dashboard');
+      } else {
+        setError('Tên đăng nhập hoặc mật khẩu không đúng.');
+      }
+    } catch (err) {
+      setError('Không thể đăng nhập. Vui lòng kiểm tra json-server.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -66,8 +68,8 @@ function Login() {
                 />
               </div>
 
-              <button type="submit" className="btn btn-primary w-100">
-                Đăng nhập
+              <button type="submit" className="btn btn-primary w-100" disabled={loading}>
+                {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
               </button>
             </form>
 
